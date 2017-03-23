@@ -17,6 +17,7 @@ class Queue:
 
     def enqueue(self, item):
         self.items.insert(0,item)
+        return item
 
     def dequeue(self):
         return self.items.pop()
@@ -36,6 +37,8 @@ class KVStorage(SyncObj):
         self.q_array = {}
         self.qid = 0
         self.q_table = {}
+        self.pop_variable = 0
+        self.pop_flag = False
     
     @replicated
     def qcreate(self,label):
@@ -45,29 +48,58 @@ class KVStorage(SyncObj):
         self.qid = self.qid + 1
         return (self.qid - 1)
     
-    @replicated
-    def qid_get(self,label):
-        key1 = self.q_array[label];
-        key2 = self.q_table.keys()[self.q_table.values().index(key1)]
-        return key2
     
+    def qid_get(self,label):
+        try:
+            key1 = self.q_array[label];
+            key2 = self.q_table.keys()[self.q_table.values().index(key1)]
+            #print(key1,key2)
+            return key2
+        except KeyError:
+            print("Not valid Index")
+
     @replicated
     def push(self,qid,item):
-        self.q_table[qid].enqueue(item)
+        try:
+            val = self.q_table[qid].enqueue(item)
+            print("Pushed - ", val)
+        except KeyError:
+            print("Not valid Index")
 
     @replicated
     def pop(self,qid):
-        val =  self.q_table[qid].dequeue() 
-        return val
-
+        try:
+            val =  self.q_table[qid].dequeue() 
+            #self.pop_variable = val;
+            #print(val,self.pop_variable)
+            #self.pop_flag = True
+            print("Popped - " , val )
+        except KeyError:
+            print("Not valid Index")
     
+    '''
+    def get_pop_variable(self):
+        print(self.pop_variable)
+        if self.pop_flag:
+            val = self.pop_variable;
+            self.pop_flag = False
+            return val;
+        else:
+            pass
+    '''
     def qtop(self,qid):
-        self.q_table[qid].print()
-        return self.q_table[qid].top()
-
+        try:
+            #self.q_table[qid].print()
+            return self.q_table[qid].top()
+        except:
+            print("Not valid Index")        
+    
     def qsize(self,qid):
-        self.q_table[qid].print()
-        return self.q_table[qid].size()
+        try:
+            self.q_table[qid].print()
+            return self.q_table[qid].size()
+        except:
+            print("Not valid Index")
 
 
 _g_kvstorage = None
@@ -82,6 +114,7 @@ def main():
     if selfAddr == 'readonly':
         selfAddr = None
     partners = sys.argv[2:]
+    print(partners)
 
     global _g_kvstorage
     _g_kvstorage = KVStorage(selfAddr, partners)
@@ -95,22 +128,24 @@ def main():
 
     while True:
         print("Leader - ",_g_kvstorage._getLeader())
-        cmd = get_input(">> ").split()
+        cmd = get_input('').split()
         if not cmd:
             continue
         elif cmd[0] == 'qcreate':
-            print("elif",cmd[1])
+            #print("elif",cmd[1])
             _g_kvstorage.qcreate(int(cmd[1]))
         elif cmd[0] == 'push':
-            print(_g_kvstorage.push(int(cmd[1]),int(cmd[2])))
+            _g_kvstorage.push(int(cmd[1]),int(cmd[2]))
+            #print("Pushed ", int(cmd[2]))
         elif cmd[0] == 'pop':
-            print(_g_kvstorage.pop(int(cmd[1])))
+            _g_kvstorage.pop(int(cmd[1]))
+            #print("Popped Value - ",_g_kvstorage.get_pop_variable())
         elif cmd[0] == 'qid':
-            print(_g_kvstorage.qid_get(int(cmd[1])))
+            print("Qid - ",_g_kvstorage.qid_get(int(cmd[1])))
         elif cmd[0] == 'qtop':
-            print(_g_kvstorage.qtop(int(cmd[1])))
+            print("Top of the Q - ",_g_kvstorage.qtop(int(cmd[1])))
         elif cmd[0] == 'qsize':
-            print(_g_kvstorage.qsize(int(cmd[1])))
+            print("Size of Q - ",_g_kvstorage.qsize(int(cmd[1])))
         else:
             print('Wrong command')
 
